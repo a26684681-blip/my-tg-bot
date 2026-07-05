@@ -1,6 +1,7 @@
 import os
 import time
 import re
+import asyncio
 from telethon import TelegramClient, events
 from telethon.tl.functions.users import GetFullUserRequest, UpdateProfileRequest
 from telethon.tl.functions.contacts import BlockRequest
@@ -26,20 +27,24 @@ def clean_and_normalize_text(text):
     if not text: return ""
     text = text.lower().strip()
     text = text.replace("0", "o").replace("3", "e").replace("4", "a").replace("1", "i")
-    return re.sub(r'[^a-z\'\`\'‘’а-яё]', '', text)
+    return re.sub(r'[^a-z\'\`\'指標’’а-яё]', '', text)
 
-# 1. DYNAMIC BIO STATUS (Updates your bio based on active status)
-@client.on(events.Heartbeat())
-async def bio_status_animator(event):
+# 1. PREMIUM BIO STATUS (Native Background Loop)
+async def bio_status_loop():
     global last_bio_status
-    try:
-        me_full = await client(GetFullUserRequest('me'))
-        is_online = getattr(me_full.user.status, 'was_online', None) is None
-        new_bio = "⚡ Cloud Engine: Active & Protected 24/7" if is_online else "🌙 Cloud Engine: Running (Offline Mode)"
-        if new_bio != last_bio_status:
-            await client(UpdateProfileRequest(about=new_bio))
-            last_bio_status = new_bio
-    except Exception: pass
+    await client.wait_until_ready()
+    while True:
+        try:
+            me_full = await client(GetFullUserRequest('me'))
+            is_online = getattr(me_full.user.status, 'was_online', None) is None
+            new_bio = "⚡ Cloud Engine: Active & Protected 24/7" if is_online else "🌙 Cloud Engine: Running (Offline Mode)"
+            if new_bio != last_bio_status:
+                await client(UpdateProfileRequest(about=new_bio))
+                last_bio_status = new_bio
+                print(f"⚙️ Bio Status Updated: {new_bio}")
+        except Exception as e:
+            print(f"Bio sync skip: {e}")
+        await asyncio.sleep(300) # Checks and refreshes smoothly every 5 minutes
 
 # 2. VIEW-ONCE UNLOCKER (Reply with .get)
 @client.on(events.NewMessage(outgoing=True))
@@ -156,4 +161,6 @@ async def spam_and_swear_blocker_handler(event):
 
 print("🚀 Cloud Engine Active!")
 client.start()
+# Fire up the parallel background task for bio adjustments
+client.loop.create_task(bio_status_loop())
 client.run_until_disconnected()
