@@ -1,9 +1,8 @@
 import os
 import time
 import re
-import asyncio
 from telethon import TelegramClient, events
-from telethon.tl.functions.users import GetFullUserRequest, UpdateProfileRequest
+from telethon.tl.functions.users import GetFullUserRequest
 from telethon.tl.functions.contacts import BlockRequest
 
 # --- CONFIG ---
@@ -21,32 +20,14 @@ client = TelegramClient('my_permanent_session', API_ID, API_HASH)
 last_reply_time = {}
 user_word_spam_tracker = {}
 view_once_cache = {}
-last_bio_status = ""
 
 def clean_and_normalize_text(text):
     if not text: return ""
     text = text.lower().strip()
     text = text.replace("0", "o").replace("3", "e").replace("4", "a").replace("1", "i")
-    return re.sub(r'[^a-z\'\`\'指標’’а-яё]', '', text)
+    return re.sub(r'[^a-z\'\`\'‘’а-яё]', '', text)
 
-# 1. PREMIUM BIO STATUS (Native Background Loop)
-async def bio_status_loop():
-    global last_bio_status
-    await client.wait_until_ready()
-    while True:
-        try:
-            me_full = await client(GetFullUserRequest('me'))
-            is_online = getattr(me_full.user.status, 'was_online', None) is None
-            new_bio = "⚡ Cloud Engine: Active & Protected 24/7" if is_online else "🌙 Cloud Engine: Running (Offline Mode)"
-            if new_bio != last_bio_status:
-                await client(UpdateProfileRequest(about=new_bio))
-                last_bio_status = new_bio
-                print(f"⚙️ Bio Status Updated: {new_bio}")
-        except Exception as e:
-            print(f"Bio sync skip: {e}")
-        await asyncio.sleep(300) # Checks and refreshes smoothly every 5 minutes
-
-# 2. VIEW-ONCE UNLOCKER (Reply with .get)
+# 1. VIEW-ONCE UNLOCKER (.get)
 @client.on(events.NewMessage(outgoing=True))
 async def view_once_unlocker(event):
     if event.is_private and event.text and event.text.strip().lower() == '.get' and event.is_reply:
@@ -57,7 +38,7 @@ async def view_once_unlocker(event):
                 await event.delete()
                 await client.send_file(event.chat_id, cached_path, caption="🔓 **View-Once Photo Recovered Successfully!**")
 
-# 3. SPY SYSTEMS (Deleted & Edited tracking)
+# 2. DELETED & EDITED SPY
 @client.on(events.MessageDeleted)
 async def deleted_handler(event):
     for msg_id in event.deleted_ids:
@@ -80,7 +61,7 @@ async def edited_handler(event):
         name = getattr(sender, 'first_name', 'Someone')
         await client.send_message('me', f"✏️ **EDITED**\n**From:** {name}\n**Old:** {event.original_message.text}\n**New:** {event.text}")
 
-# 4. GHOST READ + AUDIO TRANSCRIPTION TAG
+# 3. GHOST READ + VIEW-ONCE CACHE STORAGE
 @client.on(events.NewMessage(incoming=True))
 async def ghost_read_handler(event):
     if event.is_private:
@@ -96,15 +77,14 @@ async def ghost_read_handler(event):
         elif event.photo or event.voice or event.video_note:
             media_type = "Photo" if event.photo else ("Voice Note" if event.voice else "Video Message")
             log = f"👁️ **GHOST READ MEDIA**\n**From:** {name}\n**Type:** {media_type}"
-            if event.voice:
-                log += "\n📝 **Premium Transcription:** _[Audio processing active... Click file to listen]_"
             await client.send_message('me', log)
+            
             temp_media = await event.download_media()
             if event.photo: view_once_cache[event.id] = temp_media
             await client.send_file('me', temp_media)
             if not event.photo and os.path.exists(temp_media): os.remove(temp_media)
 
-# 5. AUTO RESPONDER
+# 4. AUTO RESPONDER
 @client.on(events.NewMessage(incoming=True))
 async def offline_auto_responder(event):
     if event.is_private:
@@ -119,7 +99,7 @@ async def offline_auto_responder(event):
         last_reply_time[event.chat_id] = current_time
         await event.reply(f"🇺🇿 UZ:\n{UZB_AWAY_MSG}\n\n🇬🇧 EN:\n{ENG_AWAY_MSG}")
 
-# 6. SPAM & DETAILED SWEAR BLOCKER
+# 5. SPAM & DETAILED SWEAR BLOCKER
 @client.on(events.NewMessage(incoming=True))
 async def spam_and_swear_blocker_handler(event):
     if event.is_private and event.text:
@@ -161,6 +141,4 @@ async def spam_and_swear_blocker_handler(event):
 
 print("🚀 Cloud Engine Active!")
 client.start()
-# Fire up the parallel background task for bio adjustments
-client.loop.create_task(bio_status_loop())
 client.run_until_disconnected()
