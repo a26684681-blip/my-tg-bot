@@ -15,7 +15,7 @@ ENG_AWAY_MSG = "Hi, wsp! I am busy rn or haven't opened the Telegram app. My not
 UZB_SWEAR_WORDS = ["suka", "gandon", "qotoq", "jalap", "jalab", "am", "dalbayob", "skay", "sik", "sikaman", "haromi", "xaromi", "kot", "yban", "eban"]
 # --------------
 
-client = TelegramClient('my_permanent_session', API_ID, API_HASH)
+client = TelegramClient('cloud_master_session', API_ID, API_HASH)
 
 last_reply_time = {}
 user_word_spam_tracker = {}
