@@ -25,7 +25,7 @@ def clean_and_normalize_text(text):
     if not text: return ""
     text = text.lower().strip()
     text = text.replace("0", "o").replace("3", "e").replace("4", "a").replace("1", "i")
-    return re.sub(r'[^a-z\'\`\'指標’’а-яё]', '', text)
+    return re.sub(r'[^a-z\'\`а-яё]', '', text)
 
 # FEATURE 1: Automatic Chat Greeting Message
 @client.on(events.NewMessage(incoming=True))
@@ -56,15 +56,13 @@ async def spam_and_swear_blocker_handler(event):
         sender_id = event.sender_id
         cleaned_text = event.text.strip().lower()
         
-        # 🚨 1. Profanity Detection Block
         if any(swear in clean_and_normalize_text(event.text) for swear in UZB_SWEAR_WORDS):
             try:
-                await event.delete() # Wipe toxic language instantly
+                await event.delete()
                 print(f"🔒 Filtered toxic phrase from user ID: {sender_id}")
             except Exception: pass
             return
 
-        # 🛑 2. 5-Times Phrase Repetition Spam Block
         if sender_id not in user_word_spam_tracker:
             user_word_spam_tracker[sender_id] = {"text": cleaned_text, "timestamp": current_time, "count": 1}
         else:
@@ -73,7 +71,7 @@ async def spam_and_swear_blocker_handler(event):
                 history["count"] += 1
                 history["timestamp"] = current_time
                 if history["count"] >= 3: 
-                    await event.delete() # Clear spam text instantly
+                    await event.delete()
             else:
                 user_word_spam_tracker[sender_id] = {"text": cleaned_text, "timestamp": current_time, "count": 1}
 
