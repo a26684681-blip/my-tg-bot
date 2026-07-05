@@ -139,6 +139,6 @@ async def spam_and_swear_blocker_handler(event):
     elif event.is_group or event.is_channel:
         await client.send_read_acknowledge(event.chat_id, max_id=event.id)
 
-print("🚀 Cloud Engine Active!")
+print("🚀 Cloud Engine Active background worker mode!")
 client.start()
 client.run_until_disconnected()
